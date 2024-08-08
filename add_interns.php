@@ -1,0 +1,329 @@
+<?php
+session_start();
+include 'connect.php';
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $firstName = $_POST['first_name'];
+    $lastName = $_POST['last_name'];
+    $email = $_POST['email'];
+    $gender = $_POST['gender'];
+
+    // Check if email already exists
+    $sql = "SELECT email FROM interns WHERE email = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows > 0) {
+        $_SESSION['error_message'] = "Email already exists.";
+    } else {
+        // Prepare and bind
+        $sql = "INSERT INTO interns (first_name, last_name, email, gender) VALUES (?, ?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ssss", $firstName, $lastName, $email, $gender);
+
+        if ($stmt->execute()) {
+            $_SESSION['success_message'] = "Intern added successfully!";
+        } else {
+            $_SESSION['error_message'] = "Error: " . $stmt->error;
+        }
+    }
+
+    $stmt->close();
+    $conn->close();
+    header("Location: dashboard.php");
+    exit();
+}
+?>
+
+<!-- Modal -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register and Login</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<style>
+        .button {
+            margin: auto;
+            min-width: 90px;
+            gap: 10px;
+            position: relative;
+            cursor: pointer;
+            padding: 12px 17px;
+            border: 0;
+            border-radius: 7px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+            background: radial-gradient(
+                ellipse at bottom,
+                rgba(71, 81, 92, 1) 0%,
+                rgba(11, 21, 30, 1) 45%
+            );
+            color: rgba(255, 255, 255, 0.66);
+            transition: all 1s cubic-bezier(0.15, 0.83, 0.66, 1);
+        }
+
+        .button::before {
+            content: "";
+            width: 70%;
+            height: 1px;
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 1) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            opacity: 0.2;
+            transition: all 1s cubic-bezier(0.15, 0.83, 0.66, 1);
+        }
+
+        .button:hover {
+            color: rgba(255, 255, 255, 1);
+            transform: scale(1.1) translateY(-3px);
+        }
+
+        .button:hover::before {
+            opacity: 1;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 350px;
+            padding: 20px;
+            border-radius: 20px;
+            position: relative;
+            background-color: #1a1a1a;
+            color: #fff;
+            border: 1px solid #333;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -1px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            padding-left: 30px;
+            color: #00bfff;
+        }
+
+        .title::before, .title::after {
+            width: 18px;
+            height: 18px;
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            left: 0;
+            background-color: #00bfff;
+        }
+
+        .title::after {
+            animation: pulse 1s linear infinite;
+        }
+
+        .message, .signin {
+            font-size: 14.5px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .signin {
+            text-align: center;
+        }
+
+        .signin a:hover {
+            text-decoration: underline royalblue;
+        }
+
+        .signin a {
+            color: #00bfff;
+        }
+
+        .flex {
+            display: flex;
+            width: 100%;
+            gap: 6px;
+        }
+
+        .form label {
+            position: relative;
+        }
+
+        .form label .input {
+            background-color: #333;
+            color: #fff;
+            width: 100%;
+            padding: 20px 5px 5px 10px;
+            outline: 0;
+            border: 1px solid rgba(105, 105, 105, 0.397);
+            border-radius: 10px;
+        }
+
+        .form label .input + span {
+            color: rgba(255, 255, 255, 0.5);
+            position: absolute;
+            left: 10px;
+            top: 0;
+            font-size: 0.9em;
+            cursor: text;
+            transition: 0.3s ease;
+        }
+
+        .form label .input:placeholder-shown + span {
+            top: 12.5px;
+            font-size: 0.9em;
+        }
+
+        .form label .input:focus + span,
+        .form label .input:valid + span {
+            color: #00bfff;
+            top: 0;
+            font-size: 0.7em;
+            font-weight: 600;
+        }
+        .form .input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.form select.input {
+    -webkit-appearance: none;  /* Remove default arrow for WebKit */
+    -moz-appearance: none;  /* Remove default arrow for Firefox */
+    appearance: none;  /* Remove default arrow */
+    padding-right: 1.5rem;  /* Add space for custom arrow */
+}
+
+.form select.input::after {
+    content: "\25BC";  /* Unicode character for down arrow */
+    position: absolute;
+    right: 1rem;
+    pointer-events: none;
+}
+
+
+        .input {
+            font-size: medium;
+        }
+
+        .submit {
+            border: none;
+            outline: none;
+            padding: 10px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            transform: .3s ease;
+            background-color: #00bfff;
+        }
+
+        .submit:hover {
+            background-color: #00bfff96;
+        }
+
+        @keyframes pulse {
+            from {
+                transform: scale(0.9);
+                opacity: 1;
+            }
+            to {
+                transform: scale(1.8);
+                opacity: 0;
+            }
+        }
+    </style>
+
+<body>
+
+<!-- Sign Up Modal -->
+<div class="modal fade" id="signUpModal" tabindex="-1" aria-labelledby="signUpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+            </div>
+            <div class="modal-body">
+                <center>
+                    <form class="form" action="add_interns.php" method="POST" id="addInternForm">
+                        <p class="title">Register</p>
+                        <p class="message">Signup now and get full access to our app.</p>
+
+                        <?php
+        if (isset($_SESSION['error_message'])) {
+            echo '<div class="alert alert-danger">' . $_SESSION['error_message'] . '</div>';
+            unset($_SESSION['error_message']);
+        }
+        if (isset($_SESSION['success_message'])) {
+            echo '<div class="alert alert-success">' . $_SESSION['success_message'] . '</div>';
+            unset($_SESSION['success_message']);
+        }
+        ?>
+
+                        <div class="flex">
+                            <label>
+                                <input class="input" type="text" name="first_name" required>
+                                <span>First Name</span>
+                            </label>
+                            <label>
+                                <input class="input" type="text" name="last_name" required>
+                                <span>Last Name</span>
+                            </label>
+                        </div>
+                        <label>
+                            <input class="input" type="email" name="email" required>
+                            <span>Email</span>
+                        </label>
+                        <label>
+                        <select class="input" name="gender" id="gender" required>
+                                <option value="" disabled selected hidden>Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                        </select>
+
+                        </label>
+                        <button class="submit" type="submit">Submit</button>
+                    </form>
+                </center>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    <?php if (isset($_SESSION['registration_success'])): ?>
+        $('#signUpModal').modal('hide');
+        $('#signInModal').modal('show');
+        <?php unset($_SESSION['registration_success']); ?>
+    <?php endif; ?>
+});
+</script>
+
+</body>
+</html>
